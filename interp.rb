@@ -1,63 +1,63 @@
 require "minruby"
 
 def evaluate(tree, genv, lenv)
-  case tree[0]
-  when "lit"
-    tree[1]
-  when "+"
-    evaluate(tree[1], genv, lenv) + evaluate(tree[2], genv, lenv)
-  when "-"
-    evaluate(tree[1], genv, lenv) - evaluate(tree[2], genv, lenv)
-  when "*"
-    evaluate(tree[1], genv, lenv) * evaluate(tree[2], genv, lenv)
-  when "/"
-    evaluate(tree[1], genv, lenv) / evaluate(tree[2], genv, lenv)
-  when "%"
-    evaluate(tree[1], genv, lenv) % evaluate(tree[2], genv, lenv)
-  when "<"
-    evaluate(tree[1], genv, lenv) < evaluate(tree[2], genv, lenv)
-  when "<="
-    evaluate(tree[1], genv, lenv) <= evaluate(tree[2], genv, lenv)
-  when "=="
-    evaluate(tree[1], genv, lenv) == evaluate(tree[2], genv, lenv)
-  when "!="
-    evaluate(tree[1], genv, lenv) != evaluate(tree[2], genv, lenv)
-  when ">="
-    evaluate(tree[1], genv, lenv) >= evaluate(tree[2], genv, lenv)
-  when ">"
-    evaluate(tree[1], genv, lenv) > evaluate(tree[2], genv, lenv)
-  when "stmts"
-    i = 1
+  case tree
+  in "lit", lit
+    lit
+  in "+", exp1, exp2
+    evaluate(exp1, genv, lenv) + evaluate(exp2, genv, lenv)
+  in "-", exp1, exp2
+    evaluate(exp1, genv, lenv) - evaluate(exp2, genv, lenv)
+  in "*", exp1, exp2
+    evaluate(exp1, genv, lenv) * evaluate(exp2, genv, lenv)
+  in "/", exp1, exp2
+    evaluate(exp1, genv, lenv) / evaluate(exp2, genv, lenv)
+  in "%", exp1, exp2
+    evaluate(exp1, genv, lenv) % evaluate(exp2, genv, lenv)
+  in "<", exp1, exp2
+    evaluate(exp1, genv, lenv) < evaluate(exp2, genv, lenv)
+  in "<=", exp1, exp2
+    evaluate(exp1, genv, lenv) <= evaluate(exp2, genv, lenv)
+  in "==", exp1, exp2
+    evaluate(exp1, genv, lenv) == evaluate(exp2, genv, lenv)
+  in "!=", exp1, exp2
+    evaluate(exp1, genv, lenv) != evaluate(exp2, genv, lenv)
+  in ">=", exp1, exp2
+    evaluate(exp1, genv, lenv) >= evaluate(exp2, genv, lenv)
+  in ">", exp1, exp2
+    evaluate(exp1, genv, lenv) > evaluate(exp2, genv, lenv)
+  in "stmts", *stmts
     last = nil
-    while tree[i]
-      last = evaluate(tree[i], genv, lenv)
+    i = 0
+    while stmts[i]
+      last = evaluate(stmts[i], genv, lenv)
       i = i + 1
     end
     last
-  when "var_assign"
-    lenv[tree[1]] = evaluate(tree[2], genv, lenv)
-  when "var_ref"
-    lenv[tree[1]]
-  when "if"
-    if evaluate(tree[1], genv, lenv)
-      evaluate(tree[2], genv, lenv)
+  in "var_assign", var_name, var_value
+    lenv[var_name] = evaluate(var_value, genv, lenv)
+  in "var_ref", var_name
+    lenv[var_name]
+  in "if", cond, exp1, exp2
+    if evaluate(cond, genv, lenv)
+      evaluate(exp1, genv, lenv)
     else
-      evaluate(tree[3], genv, lenv)
+      evaluate(exp2, genv, lenv)
     end
-  when "while"
-    while evaluate(tree[1], genv, lenv)
-      evaluate(tree[2], genv, lenv)
+  in "while", cond, exp
+    while evaluate(cond, genv, lenv)
+      evaluate(exp, genv, lenv)
     end
-  when "func_def"
-    genv[tree[1]] = ["user_defined", tree[2], tree[3]]
-  when "func_call"
+  in "func_def", func_name, func_args, func_body
+    genv[func_name] = ["user_defined", func_args, func_body]
+  in "func_call", func_name, *func_args
     args = []
     i = 0
-    while tree[i + 2]
-      args[i] = evaluate(tree[i + 2], genv, lenv)
+    while func_args[i]
+      args[i] = evaluate(func_args[i], genv, lenv)
       i = i + 1
     end
-    mhd = genv[tree[1]]
+    mhd = genv[func_name]
     if mhd[0] == "builtin"
       minruby_call(mhd[1], args)
     else
@@ -70,29 +70,28 @@ def evaluate(tree, genv, lenv)
       end
       evaluate(mhd[2], genv, new_lenv)
     end
-  when "ary_new"
+  in "ary_new", ary_values
     ary = []
     i = 0
-    while tree[i + 1]
-      ary[i] = evaluate(tree[i + 1], genv, lenv)
+    while ary_values[i]
+      ary [i] = evaluate(ary_values[i], genv, lenv)
       i = i + 1
     end
-    ary
-  when "ary_ref"
-    ary = evaluate(tree[1], genv, lenv)
-    idx = evaluate(tree[2], genv, lenv)
+  in "ary_ref", ary_exp, idx_exp
+    ary = evaluate(ary_exp, genv, lenv)
+    idx = evaluate(idx_exp, genv, lenv)
     ary[idx]
-  when "ary_assign"
-    ary = evaluate(tree[1], genv, lenv)
-    idx = evaluate(tree[2], genv, lenv)
-    val = evaluate(tree[3], genv, lenv)
+  in "ary_assign", ary_exp, idx_exp, value_exp
+    ary = evaluate(ary_exp, genv, lenv)
+    idx = evaluate(idx_exp, genv, lenv)
+    val = evaluate(value_exp, genv, lenv)
     ary[idx] = val
-  when "hash_new"
+  in "hash_new", *key_values
     hsh = {}
     i = 0
-    while tree[i + 1]
-      key = evaluate(tree[i + 1], genv, lenv)
-      val = evaluate(tree[i + 2], genv, lenv)
+    while key_values[i]
+      key = evaluate(key_values[i], genv, lenv)
+      val = evaluate(key_values[i + 1], genv, lenv)
       hsh[key] = val
       i = i + 2
     end
